@@ -3,8 +3,10 @@
 package main
 
 import (
+	"flag"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/xuri/excelize/v2"
@@ -17,6 +19,21 @@ type Result struct {
 	Role               string // HTML Role value
 	ImmediateChildType string // 자식 요소가 있을 경우, 해당 요소의 태그
 	Text               string // a 태그의 텍스트 값
+}
+
+// 실행 시 인자로부터 파싱 대상 URl을 획득
+// 미제공시 프로그램 종료
+func InitTargetURLFromArg() string {
+	targetURL := flag.String("target", "", "Target URL to parse information")
+	flag.Parse()
+	if flag.NFlag() == 0 {
+		return ""
+	}
+	if !(strings.Contains(*targetURL, "http://") && strings.Contains(*targetURL, "https://")) {
+		*targetURL = "http://" + *targetURL
+	}
+
+	return *targetURL
 }
 
 // 인자로 받은 행/열 정보 바탕으로
@@ -81,7 +98,12 @@ func Parse(document *goquery.Document) []Result {
 }
 
 func main() {
-	resp, err := http.Get("https://velog.io")
+	targetURL := InitTargetURLFromArg()
+	if targetURL == "" {
+		flag.Usage()
+	}
+
+	resp, err := http.Get(targetURL)
 	if err != nil {
 		panic(err)
 	}
