@@ -24,6 +24,19 @@ type Result struct {
 
 var ResultList []Result
 
+// 인자로 받은 행/열 정보 바탕으로
+// 엑셀 형식에 맞게 새로운 셀을 생성하여 시트에 추가
+func SetRowValues(file *excelize.File, sheet string, rowNumBase int, values []string) {
+	colNumBase := 65 // 열 인덱스는 'A' 부터 시작
+	rowNum := strconv.Itoa(rowNumBase)
+	for index, element := range values {
+		colNum := string(rune(colNumBase + index))
+		file.SetCellValue(sheet, colNum+rowNum, element)
+	}
+}
+
+//
+
 func main() {
 	resp, err := http.Get("https://naver.com")
 	if err != nil {
@@ -36,11 +49,7 @@ func main() {
 	// Excel 파일 초기화
 	file := excelize.NewFile()
 	sheetName := "Sheet1"
-	file.SetCellValue(sheetName, "A1", "URL")
-	file.SetCellValue(sheetName, "B1", "Class")
-	file.SetCellValue(sheetName, "C1", "Role")
-	file.SetCellValue(sheetName, "D1", "하위 요소")
-	file.SetCellValue(sheetName, "E1", "텍스트")
+	SetRowValues(file, sheetName, 1, []string{"URL", "Class", "Role", "하위 요소", "텍스트"})
 
 	// 머리행 스타일 설정
 	style, err := file.NewStyle(`{
@@ -60,25 +69,13 @@ func main() {
 	file.SetPanes(sheetName, `{
 		"freeze": true,
 		"split": false,
+		"x_split": 0,
+		"y_split": 1,
 		"top_left_cell": "A2"
 	}`)
 
-	// title element
-	// title := doc.Find("title").Text()
-	// doc.Find("a").Each(func(i int, s *goquery.Selection) {
-	// 	if i < 150 && i >= 70 {
-	// 		child := s.Children()
-	// 		if child.Length() > 0 {
-	// 			fmt.Println("[CHILD]", goquery.NodeName(child), child.Text())
-	// 		} else {
-	// 			fmt.Println(s.Text())
-	// 		}
-	// 	}
-	// })
-
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		index := strconv.Itoa(i + 2)
-		element := s
+	doc.Find("a").Each(func(i int, element *goquery.Selection) {
+		index := i + 2
 		immediateChildType := ""
 
 		url := element.AttrOr("href", "")
@@ -92,11 +89,7 @@ func main() {
 		}
 
 		// excel로 뽑아내기
-		file.SetCellValue(sheetName, "A"+index, url)
-		file.SetCellValue(sheetName, "B"+index, className)
-		file.SetCellValue(sheetName, "C"+index, role)
-		file.SetCellValue(sheetName, "D"+index, immediateChildType)
-		file.SetCellValue(sheetName, "E"+index, text)
+		SetRowValues(file, sheetName, index, []string{url, className, role, immediateChildType, text})
 	})
 
 	// excel로 저장
