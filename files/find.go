@@ -24,15 +24,7 @@ func main() {
 	root := args[0]
 
 	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		format := root + "/" + path
-
-		f, err := os.Stat(path)
-
-		if err != nil {
-			fmt.Println(path)
-		}
-
-		fmt.Println(f.Mode().Type())
+		format := filepath.Dir(root) + "/" + path
 
 		if *minusName != "" {
 			if filepath.Base(path) == *minusName {
