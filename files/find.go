@@ -4,8 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"log"
 	"os"
+	"os/user"
 	"path/filepath"
+	"syscall"
 )
 
 /*
@@ -14,10 +17,13 @@ import (
 */
 
 func main() {
-	minusName := flag.String("name", "", "name")
+	nameFlag := flag.String("name", "", "name")
+	userFlag := flag.String("user", "", "user")
+	groupFlag := flag.String("group", "", "group")
+	typeFlag := flag.String("type", "", "type")
 	flag.Parse()
 	args := flag.Args()
-	if len(args) != 1 {
+	if len(args) == 0 {
 		os.Exit(1)
 	}
 
@@ -25,20 +31,58 @@ func main() {
 
 	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
 		format := root + "/" + path
-
-		f, err := os.Stat(path)
-
+		info, err := os.Stat(format)
 		if err != nil {
-			fmt.Println(path)
+			log.Fatal(err)
 		}
 
-		fmt.Println(f.Mode().Type())
-
-		if *minusName != "" {
-			if filepath.Base(path) == *minusName {
-				fmt.Println(format)
+		if *nameFlag != "" {
+			if filepath.Base(path) != *nameFlag {
+				format = ""
 			}
-		} else {
+		}
+
+		if *userFlag != "" {
+			ownerName := ""
+			uid := fmt.Sprint(info.Sys().(*syscall.Stat_t).Uid)
+			owner, err := user.LookupId(uid)
+			if err == nil {
+				ownerName = owner.Username
+			}
+			if ownerName != *userFlag {
+				format = ""
+			}
+		}
+
+		if *groupFlag != "" {
+			groupName := ""
+			gid := fmt.Sprint(info.Sys().(*syscall.Stat_t).Gid)
+			group, err := user.LookupGroupId(gid)
+			if err == nil {
+				groupName = group.Name
+			}
+			if groupName != *groupFlag {
+				format = ""
+			}
+		}
+
+		if *typeFlag != "" {
+			typeInfo, err := os.Lstat(format)
+			if err != nil {
+				log.Fatal(err)
+			}
+			if *typeFlag == "f" && !typeInfo.Mode().IsRegular() {
+				format = ""
+			}
+			if *typeFlag == "l" && !(typeInfo.Mode()&os.ModeSymlink == os.ModeSymlink) {
+				format = ""
+			}
+			if *typeFlag == "d" && !typeInfo.Mode().IsDir() {
+				format = ""
+			}
+		}
+
+		if format != "" {
 			fmt.Println(format)
 		}
 		return nil
