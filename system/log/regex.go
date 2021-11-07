@@ -43,7 +43,17 @@ func findAPI(input string) (string, string) {
 	return methodMatch.FindString(input), urlMatch.FindString(input)
 }
 
-// func countIP(ip string)
+func findDate(slice string) string {
+	// 28/Sep/2021:01:55:59 +0000
+	day := "[0-3][0-9]"
+	month := "(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)"
+	year := "[0-9][0-9][0-9][0-9]"
+	// time := `[0-2][0-9]:[0-5][0-9]:[0-5][0-9]`
+	pattern := day + "\\/" + month + "\\/" + year
+
+	dateMatch := regexp.MustCompile(pattern)
+	return dateMatch.FindString(slice)
+}
 
 // go run regex.go -address="172.104.131.24" access.log
 func main() {
@@ -61,18 +71,21 @@ func main() {
 	}
 	defer logFile.Close()
 
-	// ipMap := make(map[string]Request)
 	ipMap := make(map[string]int)
 	reqMap := make(map[Request]int)
+	dateMap := make(map[string]int)
 	requests := []RequestCountable{}
+	average := 0
 	scanner := bufio.NewScanner(logFile)
 
 	for scanner.Scan() {
 		line := scanner.Text()
 		slice := strings.Split(line, "|")
 		ip := findIP(slice[0])
+		date := findDate(slice[0])
 		method, url := findAPI(slice[1])
 		request := Request{method, url}
+		fmt.Println(date)
 
 		// 문자열을 IP 타입으로 파싱하는 것
 		trial := net.ParseIP(ip)
@@ -94,15 +107,30 @@ func main() {
 		} else {
 			reqMap[request] = 1
 		}
-		for key, value := range reqMap {
-			requests = append(requests, RequestCountable{Request{key.method, key.url}, value})
-		}
-		sort.Slice(requests, func(i, j int) bool { return requests[i].count > requests[j].count })
 
+		// 3. 하루 평균 요청 개수
+		if _, ok := dateMap[date]; ok {
+			dateMap[date] += 1
+		} else {
+			dateMap[date] = 1
+		}
 	}
+
+	// 2. 어떤 메서드 + 엔드포인트 조합이 가장 많은 요청을 받았는지
+	for key, value := range reqMap {
+		requests = append(requests, RequestCountable{Request{key.method, key.url}, value})
+	}
+	sort.Slice(requests, func(i, j int) bool { return requests[i].count > requests[j].count })
+
+	// 3. 하루 평균 요청 개수
+	for _, value := range dateMap {
+		average = average + value
+	}
+	average = average / len(dateMap)
 
 	if *ipAddr != "" {
-		fmt.Println(*ipAddr, ipMap[*ipAddr])
+		fmt.Println("1.", *ipAddr, "의 요청 횟수 : ", ipMap[*ipAddr])
 	}
-	fmt.Println(requests[0].method, requests[0].url, requests[0].count)
+	fmt.Println("2. 가장 많은 조합의 요청 : ", requests[0].method, requests[0].url, requests[0].count)
+	fmt.Println("3. 일 평균 요청 개수 : ", average)
 }
