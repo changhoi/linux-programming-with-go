@@ -128,9 +128,11 @@ func main() {
 	}
 	average = average / len(dateMap)
 
-	if *ipAddr != "" {
-		fmt.Println("1.", *ipAddr, "의 요청 횟수 : ", ipMap[*ipAddr])
-	}
-	fmt.Println("2. 가장 많은 조합의 요청 : ", requests[0].method, requests[0].url, requests[0].count)
-	fmt.Println("3. 일 평균 요청 개수 : ", average)
+	// 4. report.txt 로 저장
+	report, _ := os.Create("./report.txt")
+	defer report.Close()
+	fmt.Fprintln(report, "# $ go run regex.go -address=", *ipAddr, path)
+	fmt.Fprintln(report, "1.", *ipAddr, "의 요청 횟수 : ", ipMap[*ipAddr])
+	fmt.Fprintln(report, "2. 가장 많은 조합의 요청 : ", requests[0].method, requests[0].url, requests[0].count)
+	fmt.Fprintln(report, "3. 일 평균 요청 개수 : ", average)
 }
